@@ -1,10 +1,10 @@
 {
-    "name": "rluders/rdstation",
-    "description": "RDStation Integration",
+    "name": "isaquealves/rdstation",
+    "description": "RDStation Integration Library updated to use Guzzle v5",
     "require": {
-        "php": ">=5.3",
+        "php": ">=5.3.3",
         "wixel/gump": "dev-master",
-        "guzzle/guzzle": "3.9.*@dev"
+        "guzzlehttp/guzzle": "~5.0"
     },
     "autoload": {
         "psr-4": {
@@ -19,6 +19,10 @@
         {
             "name": "Ricardo Lüders",
             "email": "ricardo.luders@humantech.com.br"
+        },
+        {
+            "name" : "Isaque Alves",
+            "email" : "isaquealves@gmail.com"
         }
     ],
     "minimum-stability": "dev"
