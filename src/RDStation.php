@@ -1,11 +1,59 @@
-<?php namespace Rluders\RDStation;
+<?php 
+/**
+ * RDStation.php
+ * 
+ * This file provides a basic class to build integrations with rdstation.
+ * 
+ * 
+ * The MIT License (MIT)
+ * 
+ * Copyright (c) 2015 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * 
+ */
+namespace RDStation;
 
-use Rluders\RDStation\RDException;
-use Guzzle\Http\Client as GuzzleClient;
+use RDStation\RDException;
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Stream\Stream;
 
+
+/**
+ * RDStation class
+ * 
+ * Basic Rd Station integration class. 
+ * 
+ * @author  Ricardo Lüders <ricardo.luders@humantech.com.br>
+ * @author Isaque Alves <isaquealves@gmail.com>
+ * @package RDStation
+ * @version 1.0
+ * @since 06/08/2015
+ * 
+ */
 class RDStation
 {
 
+	const API_URL = 'http://www.rdstation.com.br/api/';
+
+	const STAGE_LEAD_SIMPLE		= 0;
+	const STAGE_LEAD_QUALIFIED	= 1;
+	const STAGE_LEAD_CONSUMER 	= 2;
+	
 	/**
 	 * RDStation account token
 	 * @type string
@@ -19,20 +67,39 @@ class RDStation
 	protected $identifier = null;
 
 	/**
-	 * API
+	 * RDStation private token
 	 * @var string
 	 */
-	protected $api_url = 'http://www.rdstation.com.br/api/1.2/';
+	protected $privateToken = null;
+
+	/**
+	 * Default API Version
+	 * @var string
+	 */
+	protected $defaultApiVersion = '1.2';
+
+	/**
+	 * Api Version - User setting
+	 * @var string
+	 */
+	protected $apiVersion = false;
+
+	/**
+	 * Api URL - Used to store the full api url, including api version.
+	 * @var string
+	 */
+	protected $fullApiUrl = null;
 	
 	/**
 	 * Class constructor
 	 * @param string $token      RDStation account token
 	 * @param string $identifier Page or Event identifier
 	 */
-	public function __construct($token = null, $identifier = null)
+	public function __construct($token = null, $privateToken = null, $identifier = null)
 	{
-
+		$this->fullApiUrl = self::API_URL . ($this->apiVersion ? $this->apiVersion : $this->defaultApiVersion) . "/" ;
 		$this->setToken($token);
+		$this->setPrivateToken($privateToken);
 		$this->setIdentifier($identifier);
 
 	}
@@ -44,20 +111,14 @@ class RDStation
 	public function getApiUrl()
 	{
 
-		return $this->api_url;
+		return $this->fullApiUrl;
 
 	}
 
-	/**
-	 * Set RDStation API URL
-	 * @param string $api_url RDStation API full URL
-	 */
-	public function setApiUrl($api_url)
+	public function setApiVersion($version)
 	{
-
-		$this->api_url = $api_url;
+		$this->apiVersion = $version;
 		return $this;
-
 	}
 
 	/**
@@ -81,6 +142,25 @@ class RDStation
 		$this->token = $token;
 		return $this;
 
+	}
+
+	/**
+	 * RDStation private token
+	 * @return string 
+	 */
+	public function getPrivateToken()
+	{
+		return $this->privateToken;
+	}
+
+	/**
+	 * Set private token
+	 * @param string $privateToken Set RDStation private token
+	 */
+	public function setPrivateToken($privateToken)
+	{
+		$this->privateToken = $privateToken;
+		return $this;
 	}
 
 	/**
@@ -146,49 +226,62 @@ class RDStation
 	/**
 	 * Send data to RDStation
 	 * @param  array $data       Data to sent
-	 * @param  string $identifier Page or event identifier
+	 * @param  string $type      The type of resource to be accessed. 
+	 *      'generic' is used to change a lead status;
+	 * 		'conversions' is used to send a new lead;
+	 * 		'leads' is used to update a given lead
+ 	 * @param  string $identifier Page or event identifier
 	 * @return boolean
 	 */
-	public function send($data, $identifier = null)
+	public function send($data, $type=null, $identifier = null)
 	{
 
 		if ($identifier) {
 
-			$this->setIdenfirier($identifier);
+			$this->setIdentifier($identifier);
 
 		}
 
+		switch($type) {
+			
+			case 'generic':
+				$url = $this->fullApiUrl . "/services/". $this->privateToken."/generic";
+				$method = 'POST';
+				break;
+			case 'conversions':
+				$url =  $this->fullApiUrl . "conversions";
+				$method = 'POST'; 
+				break;
+			case 'leads' : 
+				$url = $this->fullApiUrl . "leads" . "/" . $data['email'];
+				$method = 'PUT';
+				break;
+			default:
+				throw new Exception("Invalid 'type' argument. Type can only be 'conversions', 'leads' or 'generic'." );
+		}
+
 		$data = $this->prepareData($data);
+
+		$client = new GuzzleClient(['base_url' => $this->getApiUrl()]);
+
+			$request = $client->createRequest(
+				$method,
+				$url,
+				[
+					'body' => $data
+				]
+			);
+
 		
 		try {
 
-			$client = new GuzzleClient($this->getApiUrl());
+			
+			$response = $client->send($request);
+			return $response;
 
-			$request = $client->post(
-				'conversions',
-				array(
-					'config' => array(
-						'curl' => array(
-							CURLOPT_POST => 1,
-							CURLOPT_FOLLOWLOCATION => 1,
-							CURLOPT_SSL_VERIFYPEER => false
-						)
-					)
-				),
-				$data
-			)->send();
-
-			return true;
-
-		} catch (RDException $e) {
-
-			if (ini_get('display_errors')) {
-
-				echo $e->getMessage();
-
-			}
-
-			return false;
+		} catch (\Exception $e) {
+			
+			return Stream::factory('Failed to send request to ' . $url . ".");
 
 		}
 
