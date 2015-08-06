@@ -1,6 +1,6 @@
 <?php
 
-use Rluders\RDStation\RDStation;
+use RDStation\RDStation;
 
 class RDStationTest extends PHPUnit_Framework_TestCase
 {
@@ -10,7 +10,7 @@ class RDStationTest extends PHPUnit_Framework_TestCase
 	{
 
 		$rdstation = new RDStation();
-		$this->assertInstanceOf('Rluders\RDStation\RDStation', $rdstation);
+		$this->assertInstanceOf('RDStation\RDStation', $rdstation);
 
 	}
 
@@ -22,15 +22,15 @@ class RDStationTest extends PHPUnit_Framework_TestCase
 		$rdstation->setToken('newtoken');
 		$this->assertEquals('newtoken', $rdstation->getToken());
 
-		$rdstation->setApiUrl('newurl');
-		$this->assertEquals('newurl', $rdstation->getApiUrl());
+		$rdstation->setPrivateToken('newprivatetoken');
+		$this->assertEquals('newprivatetoken', $rdstation->getPrivateToken());
 
 		$rdstation->setIdentifier('newid');
 		$this->assertEquals('newid', $rdstation->getIdentifier());
 
 	}
 
-	public function testSend()
+	public function testCreateNewLead()
 	{
 
 		$token = 'invalid-token';
@@ -38,14 +38,37 @@ class RDStationTest extends PHPUnit_Framework_TestCase
 		$rdstation = new RDStation($token, 'phpunit-test');
 		$result = $rdstation->send(
 			array(
-				'name' => 'Ricardo Lüders',
+				'name' => 'Test User',
 				'email' => 'valid@email.com'
-			)
+			),'conversions'
 		);
 
-		// $this->assertTrue($result);
+		//$this->assertEquals(200, $result->getStatusCode()); // only if a valid token is provided.
 		$this->assertFalse($result);
 
 	}
 
+	public function testUpdateLead()
+	{
+		$token = 'invalid-token';
+		$privateToken = 'invalid-private-token';
+
+		$rdstation = new RDStation($token, 'phpunit-test');
+		$result = $rdstation->send(
+			array(
+				"auth_token" => $privateToken ,
+				'email' => 'valid@email.com',
+				'tags' => 'test',
+				'lead' => array(
+					"lifecycle_stage" => 1,
+					"opportunity" => true
+				)
+			),'leads'
+		);
+		//$this->assertEquals(200, $result->getStatusCode()); // only if a valid token is provided.
+		$this->assertContains('Failed to send request', $result->getContents());
+
+	}
+
 }
+
