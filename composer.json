@@ -3,7 +3,6 @@
     "description": "RDStation Integration Library updated to use Guzzle v5",
     "require": {
         "php": ">=5.3.3",
-        "wixel/gump": "dev-master",
         "guzzlehttp/guzzle": "~5.0"
     },
     "autoload": {
