@@ -44,7 +44,7 @@ class RDStationTest extends PHPUnit_Framework_TestCase
 		);
 
 		//$this->assertEquals(200, $result->getStatusCode()); // only if a valid token is provided.
-		$this->assertFalse($result);
+		$this->assertContains('Failed to send request', $result->getContents());
 
 	}
 
